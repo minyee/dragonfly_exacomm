@@ -302,6 +302,8 @@ private:
 
  void route_minimal_individual_switch(switch_id src);
 
+ void form_canonical_dragonfly();
+
 public:
  int num_groups() {
  	return num_groups_;

@@ -31,6 +31,9 @@ RegisterKeywords(
  	switches_per_group_ = params->get_int_param("switches_per_group"); // controls a
   //optical_links_per_switch_ = params->get_int_param("optical_links_per_switch");
  	nodes_per_switch_ = params->get_optional_int_param("nodes_per_switch", 4);
+
+  bool is_canonical = params->get_optional_bool_param("canonical", false);
+
   std::string filename = params->get_param("adjacency_matrix_filename");
   max_switch_id_ = (num_groups_ * switches_per_group_) - 1;
   outgoing_adjacency_list_.resize(num_groups_ * switches_per_group_);
@@ -46,7 +49,14 @@ RegisterKeywords(
   }
   // now figure out what the adjacency matrix of the entire topology looks like
   // more importantly how do I transfer that information from
-  form_topology(filename);
+  if (!is_canonical)
+    form_topology(filename);
+  else {
+    form_canonical_dragonfly();
+    switches_per_group_ = num_groups_ - 1;
+  }
+
+
   for (int i = 0; i <= max_switch_id_; i++) {
     print_port_connection_for_switch(i);
   }
@@ -257,6 +267,7 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
             sstmac::hw::Link_Type ltype = Electrical;
             if (group_from_swid(i) != group_from_swid(j)) ltype = Optical;
             outgoing_adjacency_list_[i].push_back(new dfly_link(i, last_used_outport[i], j , last_used_inport[j], ltype));
+            incoming_adjacency_list_[j].push_back(new dfly_link(i, last_used_outport[i], j , last_used_inport[j], ltype));
             last_used_outport[i]++;
             last_used_inport[j]++;
           }
@@ -333,6 +344,56 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
     }
     return;
   }
+
+  void exacomm_dragonfly_topology::form_canonical_dragonfly() {
+    std::cout << "CANONICAL DRAGONFLY YEAHHHHHHHH" << std::endl;
+    int inports[max_switch_id_ + 1];
+    int outports[max_switch_id_ + 1];
+    std::memset(&inports, 0, sizeof(int) * (max_switch_id_ + 1));
+    std::memset(&outports, 0, sizeof(int) * (max_switch_id_ + 1));
+    // form intra-group links
+    for (int group = 0; group < num_groups_; group++) {
+      switch_id group_offset = group * switches_per_group_;
+      for (int i = 0; i < switches_per_group_ - 1; i++) {
+        switch_id src = group_offset + i;
+        for (int j = i + 1; j < switches_per_group_; j++) {
+          switch_id dst = group_offset + j;
+          outgoing_adjacency_list_[src].push_back(new dfly_link(src, outports[src], dst , inports[dst], Electrical));
+          incoming_adjacency_list_[dst].push_back(new dfly_link(src, outports[src], dst , inports[dst], Electrical));
+          outports[src]++;
+          inports[dst]++;
+
+          outgoing_adjacency_list_[dst].push_back(new dfly_link(dst, outports[dst], src , inports[src], Electrical));
+          incoming_adjacency_list_[src].push_back(new dfly_link(dst, outports[dst], src , inports[src], Electrical));
+          outports[dst]++;
+          inports[src]++;
+        }
+      }
+    }
+    switch_id last_group_used_switch[num_groups_];
+    std::memset(&last_group_used_switch, 0, sizeof(switch_id) * num_groups_);
+    for (int src_group = 0; src_group < num_groups_ - 1; src_group++) {
+      //switch_id src = (src_group * switches_per_group_) + last_group_used_switch[src_group];
+      for (int dst_group = src_group + 1; dst_group < num_groups_; dst_group++) {
+        switch_id src = (src_group * switches_per_group_) + last_group_used_switch[src_group];
+        switch_id dst = (dst_group * switches_per_group_) + last_group_used_switch[dst_group];
+
+        outgoing_adjacency_list_[src].push_back(new dfly_link(src, outports[src], dst , inports[dst], Optical));
+        incoming_adjacency_list_[dst].push_back(new dfly_link(src, outports[src], dst , inports[dst], Optical));
+        outports[src]++;
+        inports[dst]++;
+
+        outgoing_adjacency_list_[dst].push_back(new dfly_link(dst, outports[dst], src , inports[src], Optical));
+        incoming_adjacency_list_[src].push_back(new dfly_link(dst, outports[dst], src , inports[src], Optical));
+        outports[dst]++;
+        inports[src]++;
+
+        last_group_used_switch[src_group]++;
+        last_group_used_switch[dst_group]++;
+      }
+    }
+
+  };
 }
 }
 
