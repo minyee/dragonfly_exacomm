@@ -43,7 +43,7 @@ RegisterKeywords(
   std::cout << "Initialized the dragonfly topology" << std::endl;
   routing_table_.resize(max_switch_id_ + 1);
   for (int i = 0; i <= max_switch_id_; i++) {
-    std::cout << "The distance matrix has size " << std::to_string(max_switch_id_ + 1) << std::endl;
+    //std::cout << "The distance matrix has size " << std::to_string(max_switch_id_ + 1) << std::endl;
     distance_matrix_[i].resize(max_switch_id_ + 1);
     routing_table_.resize(max_switch_id_ + 1);
   }
@@ -52,15 +52,15 @@ RegisterKeywords(
   if (!is_canonical)
     form_topology(filename);
   else {
-    form_canonical_dragonfly();
     switches_per_group_ = num_groups_ - 1;
+    form_canonical_dragonfly();
   }
 
-
+  /*
   for (int i = 0; i <= max_switch_id_; i++) {
     print_port_connection_for_switch(i);
   }
-
+  */
   route_minimal_topology();
  };
 
@@ -72,6 +72,7 @@ RegisterKeywords(
  void exacomm_dragonfly_topology::minimal_route_to_switch(switch_id src_switch_addr, 
  												switch_id dst_switch_addr, 
  												routable::path& path) const {
+
     int dist = 0;
     switch_id curr_switch = dst_switch_addr;
     switch_id parent = curr_switch;
@@ -88,6 +89,30 @@ RegisterKeywords(
         path.set_outport(link->get_src_outport());
       }
     }
+
+
+    /*
+    int dist = 0;
+    switch_id curr_switch = dst_switch_addr;
+    switch_id parent = routing_table_[src_switch_addr][curr_switch];
+    while (parent != src_switch_addr) {
+      if (dist >= 4)
+        spkt_abort_printf("ROUTING IS WRONG!!!!!!!!!!");
+      
+      curr_switch = parent;
+      parent = routing_table_[src_switch_addr][curr_switch];
+
+      
+      dist++;
+    }
+    // at this point the parent switch should be the next switch
+    assert(parent == src_switch_addr);
+    for (auto link : outgoing_adjacency_list_[parent]) {
+      if (link->get_dst() == curr_switch) {
+        path.set_outport(link->get_src_outport());
+      }
+    }
+    */
  };
 
 
@@ -277,6 +302,7 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
         i++;
       }
     } else {
+      
       spkt_abort_printf("Cannot Open the adjacency_matrix file");
     }
     std::cout << "GOT OUT OF FORM TOPOLOGY" << std::endl;
@@ -346,7 +372,6 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
   }
 
   void exacomm_dragonfly_topology::form_canonical_dragonfly() {
-    std::cout << "CANONICAL DRAGONFLY YEAHHHHHHHH" << std::endl;
     int inports[max_switch_id_ + 1];
     int outports[max_switch_id_ + 1];
     std::memset(&inports, 0, sizeof(int) * (max_switch_id_ + 1));

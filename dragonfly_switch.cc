@@ -67,6 +67,14 @@ namespace hw {
 		switch_outport_handlers_.resize(switch_radix_);
 		nodal_inport_handlers_.resize(nodes_per_switch_);
 		nodal_outport_handlers_.resize(nodes_per_switch_);
+		for (int i = 0; i < switch_radix_; i++) {
+			switch_outport_handlers_[i] = nullptr;
+			switch_inport_handlers_[i] = nullptr;
+		}
+		for (int i = 0; i < nodes_per_switch_; i++) {
+			nodal_inport_handlers_[i] = nullptr;
+			nodal_outport_handlers_[i] = nullptr;
+		}
 		dtop_ = dynamic_cast<exacomm_dragonfly_topology *>(topology::static_topology(params));
 		init_links(params);
 	}
@@ -117,7 +125,7 @@ namespace hw {
 	}
 
 	link_handler* dragonfly_switch::payload_handler(int port) const {
-		std::cout << "Payload Handler for switch id : " << std::to_string(my_addr_) << " for port : " << std::to_string(port) << std::endl;
+		//std::cout << "Payload Handler for switch id : " << std::to_string(my_addr_) << " for port : " << std::to_string(port) << std::endl;
 		if (port < switch_radix_) {
 			return new_link_handler(this, &dragonfly_switch::recv_payload);
 		} else {
@@ -145,11 +153,15 @@ namespace hw {
 			routable::path pth;
 			dtop_->minimal_route_to_switch(my_addr_, dst_switch, pth);
 			outport = pth.outport();
+			if (outport >= switch_outport_handlers_.size())
+				spkt_abort_printf("RECV_NODAL_PAYLOAD cannot find valid outport at %d \n", outport);
 			eh = switch_outport_handlers_[outport];
 			if (dst_group != dtop_->group_from_swid(my_addr_)) {
 				actual_delay = send_payload_latency_ + (8 * msg->num_bytes()) * inv_optical_link_bw_;	
 			} 
 		}
+		if (eh == nullptr)
+			spkt_abort_printf("RECV_PAYLOAD cannot recv_payload, unmapped\n");
 		eh->send_extra_delay(actual_delay, ev);
 		return;
 	}
@@ -179,6 +191,8 @@ namespace hw {
 			routable::path pth;
 			dtop_->minimal_route_to_switch(my_addr_, dst_switch, pth); // CONTINUE HERE, THIS IS WHERE IT FAILS
 			outport = pth.outport();
+			if (outport >= switch_outport_handlers_.size())
+				spkt_abort_printf("RECV_NODAL_PAYLOAD cannot find valid outport at %d \n", outport);
 			eh = switch_outport_handlers_[outport];
 			if (dst_group != src_group) {
 				actual_delay = send_payload_latency_ + (8 * msg->num_bytes()) * inv_optical_link_bw_;	

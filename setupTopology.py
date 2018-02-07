@@ -131,12 +131,15 @@ class Interconnect:
 		self.system = sst.macro.System(params)
 		self.num_nodes = self.system.numNodes()
 		self.num_switches = self.system.numSwitches()
+
 		self.switches = [0]*self.num_switches
 		self.nodes = [0]*self.num_nodes #just expands the size of an initial array with 1 element 0 to size 1 * num_nodes
 		topolParams = self.params["topology"]
 		self.switches_per_group = int(topolParams["switches_per_group"])
 		self.nodes_per_switch = int(topolParams["nodes_per_switch"])
 		self.num_groups = int(topolParams["groups"])
+		assert(self.num_switches == self.num_groups * self.switches_per_group)
+		self.switchRadices = [0] * self.num_switches
 					
 	def buildEndpoints(self):
 		nodeParams = self.params["node"]
@@ -149,7 +152,6 @@ class Interconnect:
 
 	def buildElectricalSwitches(self):
 		switchParams = self.params["switch"]
-		print "teeeeheeee"
 		switchName = "dragonfly" + "_switch"
 		#totalSwitchesPerGroup = self.optical_switches_per_group + self.switches_per_group
 		for i in range(self.num_switches):
@@ -181,9 +183,10 @@ class Interconnect:
 			for srcId, dstId, srcOutport, dstInport in connections:
 				#print "srcId: %d and dstId: %d srcOutport: %d, dstInport: %d" % (srcId, dstId, srcOutport, dstInport)
 				#print self.switches
-				print "connecting - srcID: %d outport: %d -> dstID: %d inport: %d" % (srcId,	 srcOutport, dstId, dstInport)
+				#print "connecting - srcID: %d outport: %d -> dstID: %d inport: %d" % (srcId,	 srcOutport, dstId, dstInport)
 				srcSwitch.addParam("switch_radix", len(connections))
 				dstSwitch = self.switches[dstId]
+				self.switchRadices[i] = len(connections)
 				#linkName = "network %d:%d->%d:%d" % (srcId, srcOutport ,dstId, dstInport)
         		#link = sst.Link(linkName)
         		#portName = "output %d %d" % (srcOutport, dstInport)
@@ -200,7 +203,7 @@ class Interconnect:
 			for nodeIndex in range(self.nodes_per_switch):
 				index = nodeIndex + (i * self.nodes_per_switch)
 				node = self.nodes[index]
-				switchPortIndex = self.switches_per_group - 1 + 1 + nodeIndex
+				switchPortIndex = self.switchRadices[i] + nodeIndex
 				makeUniLink("injection",node,index,0,switch,i,switchPortIndex,smallLatency)
 				makeUniLink("ejection",switch,i,switchPortIndex,node,index,0,smallLatency)
 
@@ -317,7 +320,6 @@ def setupTopology():
 	params = readCmdLineParams()
 	nodeParams = params["node"]
 	swParams = params["switch"]
-	print "dsfweuguwebj"
 	builtinApps = [
    		"apitest",
        	"global_test",
@@ -360,7 +362,6 @@ def setupTopology():
 	swParams["topology"] = params["topology"]
 
 	#swParams["topology"] = "torus"
-	print "hellosdksd	makeUniLink"
 	#move every param in the global namespace 
 	#into the individal namespaces
 	for ns in "node", "switch":
