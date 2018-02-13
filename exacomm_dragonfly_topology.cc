@@ -37,10 +37,9 @@ RegisterKeywords(
   std::string filename = params->get_param("adjacency_matrix_filename");
   max_switch_id_ = (num_groups_ * switches_per_group_) - 1;
   outgoing_adjacency_list_.resize(num_groups_ * switches_per_group_);
-  incoming_adjacency_list_.resize(num_groups_ * switches_per_group_);
+  //incoming_adjacency_list_.resize(num_groups_ * switches_per_group_); // incoming adjacency list is somewhat redundant information
   distance_matrix_.resize(max_switch_id_ + 1);
   switch_usage_.resize(max_switch_id_ + 1);
-  std::cout << "Initialized the dragonfly topology" << std::endl;
   routing_table_.resize(max_switch_id_ + 1);
   for (int i = 0; i <= max_switch_id_; i++) {
     //std::cout << "The distance matrix has size " << std::to_string(max_switch_id_ + 1) << std::endl;
@@ -55,12 +54,6 @@ RegisterKeywords(
     switches_per_group_ = num_groups_ - 1;
     form_canonical_dragonfly();
   }
-
-  /*
-  for (int i = 0; i <= max_switch_id_; i++) {
-    print_port_connection_for_switch(i);
-  }
-  */
   route_minimal_topology();
  };
 
@@ -77,8 +70,8 @@ RegisterKeywords(
     switch_id curr_switch = dst_switch_addr;
     switch_id parent = curr_switch;
     while (curr_switch != src_switch_addr) {
-      if (dist >= 4)
-        spkt_abort_printf("ROUTING IS WRONG!!!!!!!!!!");
+      //if (dist >= 4)
+        //spkt_abort_printf("ROUTING IS WRONG!!!!!!!!!!");
       parent = curr_switch;
       curr_switch = routing_table_[src_switch_addr][curr_switch];
       dist++;
@@ -292,7 +285,7 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
             sstmac::hw::Link_Type ltype = Electrical;
             if (group_from_swid(i) != group_from_swid(j)) ltype = Optical;
             outgoing_adjacency_list_[i].push_back(new dfly_link(i, last_used_outport[i], j , last_used_inport[j], ltype));
-            incoming_adjacency_list_[j].push_back(new dfly_link(i, last_used_outport[i], j , last_used_inport[j], ltype));
+            //incoming_adjacency_list_[j].push_back(new dfly_link(i, last_used_outport[i], j , last_used_inport[j], ltype));
             last_used_outport[i]++;
             last_used_inport[j]++;
           }
@@ -384,12 +377,12 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
         for (int j = i + 1; j < switches_per_group_; j++) {
           switch_id dst = group_offset + j;
           outgoing_adjacency_list_[src].push_back(new dfly_link(src, outports[src], dst , inports[dst], Electrical));
-          incoming_adjacency_list_[dst].push_back(new dfly_link(src, outports[src], dst , inports[dst], Electrical));
+          //incoming_adjacency_list_[dst].push_back(new dfly_link(src, outports[src], dst , inports[dst], Electrical));
           outports[src]++;
           inports[dst]++;
 
           outgoing_adjacency_list_[dst].push_back(new dfly_link(dst, outports[dst], src , inports[src], Electrical));
-          incoming_adjacency_list_[src].push_back(new dfly_link(dst, outports[dst], src , inports[src], Electrical));
+          //incoming_adjacency_list_[src].push_back(new dfly_link(dst, outports[dst], src , inports[src], Electrical));
           outports[dst]++;
           inports[src]++;
         }
@@ -404,12 +397,12 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
         switch_id dst = (dst_group * switches_per_group_) + last_group_used_switch[dst_group];
 
         outgoing_adjacency_list_[src].push_back(new dfly_link(src, outports[src], dst , inports[dst], Optical));
-        incoming_adjacency_list_[dst].push_back(new dfly_link(src, outports[src], dst , inports[dst], Optical));
+        //incoming_adjacency_list_[dst].push_back(new dfly_link(src, outports[src], dst , inports[dst], Optical));
         outports[src]++;
         inports[dst]++;
 
         outgoing_adjacency_list_[dst].push_back(new dfly_link(dst, outports[dst], src , inports[src], Optical));
-        incoming_adjacency_list_[src].push_back(new dfly_link(dst, outports[dst], src , inports[src], Optical));
+        //incoming_adjacency_list_[src].push_back(new dfly_link(dst, outports[dst], src , inports[src], Optical));
         outports[dst]++;
         inports[src]++;
 

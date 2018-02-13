@@ -278,7 +278,7 @@ private:
 
  std::vector<std::vector<dfly_link *>> outgoing_adjacency_list_;
 
- std::vector<std::vector<dfly_link *>> incoming_adjacency_list_;
+ //std::vector<std::vector<dfly_link *>> incoming_adjacency_list_;
 
  std::vector<std::vector<int>> distance_matrix_;
 
