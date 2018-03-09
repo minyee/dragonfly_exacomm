@@ -3,7 +3,7 @@ SRC := exacomm_dragonfly_topology.cc dragonfly_switch.cc
 
 CXX :=    libsst++
 CC :=     libsstcc
-CXXFLAGS := -fPIC
+CXXFLAGS := -fPIC -std=c++11
 CPPFLAGS := -I. -I$(HOME)/Programs/install/sst-core/clang/include
 #CPPFLAGS := -I. -I$(HOME)/install/sstcore-7.1.0/include
 LIBDIR :=  

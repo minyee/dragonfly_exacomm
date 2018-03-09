@@ -29,11 +29,10 @@ RegisterKeywords(
 
  	num_groups_ = params->get_int_param("groups"); // controls g
  	switches_per_group_ = params->get_int_param("switches_per_group"); // controls a
-  //optical_links_per_switch_ = params->get_int_param("optical_links_per_switch");
  	nodes_per_switch_ = params->get_optional_int_param("nodes_per_switch", 4);
 
-  bool is_canonical = params->get_optional_bool_param("canonical", false);
-
+  bool is_canonical = params->get_optional_bool_param("canonical", false); // assume that by default, the dragonfly is not canonical
+  bool load_balancing_routing_ = params->get_optional_bool_param("load_balance_routing", false); 
   std::string filename = params->get_param("adjacency_matrix_filename");
   max_switch_id_ = (num_groups_ * switches_per_group_) - 1;
   outgoing_adjacency_list_.resize(num_groups_ * switches_per_group_);
@@ -42,7 +41,6 @@ RegisterKeywords(
   switch_usage_.resize(max_switch_id_ + 1);
   routing_table_.resize(max_switch_id_ + 1);
   for (int i = 0; i <= max_switch_id_; i++) {
-    //std::cout << "The distance matrix has size " << std::to_string(max_switch_id_ + 1) << std::endl;
     distance_matrix_[i].resize(max_switch_id_ + 1);
     routing_table_.resize(max_switch_id_ + 1);
   }
@@ -54,10 +52,19 @@ RegisterKeywords(
     switches_per_group_ = num_groups_ - 1;
     form_canonical_dragonfly();
   }
-  route_minimal_topology();
+  diameter_ = 0;
+  route_minimal_topology(diameter_);
  };
 
- exacomm_dragonfly_topology::~exacomm_dragonfly_topology() {};
+ exacomm_dragonfly_topology::~exacomm_dragonfly_topology() {
+  for (auto dfly_link_vector : outgoing_adjacency_list_) {
+    for (dfly_link* dlink : dfly_link_vector) {
+      if (dlink) {
+        delete dlink;
+      }
+    }
+  }
+ };
 
  /**
   * IMPORTANT: This function will route the minimal path
@@ -65,47 +72,22 @@ RegisterKeywords(
  void exacomm_dragonfly_topology::minimal_route_to_switch(switch_id src_switch_addr, 
  												switch_id dst_switch_addr, 
  												routable::path& path) const {
-
-    int dist = 0;
-    switch_id curr_switch = dst_switch_addr;
-    switch_id parent = curr_switch;
-    while (curr_switch != src_switch_addr) {
-      //if (dist >= 4)
+  int dist = 0;
+  switch_id curr_switch = dst_switch_addr;
+  switch_id parent = curr_switch;
+  while (curr_switch != src_switch_addr) {
+    //if (dist >= 4)
         //spkt_abort_printf("ROUTING IS WRONG!!!!!!!!!!");
-      parent = curr_switch;
-      curr_switch = routing_table_[src_switch_addr][curr_switch];
-      dist++;
-    }
+    parent = curr_switch;
+    curr_switch = routing_table_[src_switch_addr][curr_switch];
+    dist++;
+  }
     // at this point the parent switch should be the next switch
-    for (auto link : outgoing_adjacency_list_[src_switch_addr]) {
-      if (link->get_dst() == parent) {
-        path.set_outport(link->get_src_outport());
-      }
+  for (auto link : outgoing_adjacency_list_[src_switch_addr]) {
+    if (link->get_dst() == parent) {
+      path.set_outport(link->get_src_outport());
     }
-
-
-    /*
-    int dist = 0;
-    switch_id curr_switch = dst_switch_addr;
-    switch_id parent = routing_table_[src_switch_addr][curr_switch];
-    while (parent != src_switch_addr) {
-      if (dist >= 4)
-        spkt_abort_printf("ROUTING IS WRONG!!!!!!!!!!");
-      
-      curr_switch = parent;
-      parent = routing_table_[src_switch_addr][curr_switch];
-
-      
-      dist++;
-    }
-    // at this point the parent switch should be the next switch
-    assert(parent == src_switch_addr);
-    for (auto link : outgoing_adjacency_list_[parent]) {
-      if (link->get_dst() == curr_switch) {
-        path.set_outport(link->get_src_outport());
-      }
-    }
-    */
+  }
  };
 
 
@@ -159,9 +141,9 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
   int exacomm_dragonfly_topology::num_hops_to_node(node_id src, node_id dst) const {
     int src_swid = src / (nodes_per_switch_);
     int dst_swid = dst / (nodes_per_switch_);
-    //int min_dist = distance_matrix_[src_swid][dst_swid];
-    int min_dist = 2;
-    return min_dist + 2; // added by 2 because each node is 1 hop away from it's switch
+    int min_dist = distance_matrix_[src_swid][dst_swid];
+    // added by 2 because each node is 1 hop away from it's switch
+    return min_dist + 2; 
   };
 
   void exacomm_dragonfly_topology::nodes_connected_to_injection_switch(switch_id swid, 
@@ -208,7 +190,7 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
    * @return
    */
   int exacomm_dragonfly_topology::num_netlinks() const {
-    return 1;
+    return 1; // each node is only connected to one endpoint
   }; 
 
   switch_id exacomm_dragonfly_topology::max_netlink_id() const {
@@ -216,7 +198,7 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
   };
 
   bool exacomm_dragonfly_topology::netlink_id_slot_filled(node_id nid) const {
-    return true;
+    return (nid < (num_groups_ * switches_per_group_ * nodes_per_switch_));
   };
 
   /**
@@ -247,7 +229,9 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
 
   
   bool exacomm_dragonfly_topology::node_to_netlink(node_id nid, node_id& net_id, int& offset) const {
-    return true;
+    net_id = nid;
+    offset = 0;
+    return false;
   };
 
   switch_id exacomm_dragonfly_topology::node_to_switch(node_id nid) const {
@@ -307,7 +291,7 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
    * that the traffic balancing can be used to do load balancing routing
    * NOTE: The routing table stores that number of available ways one switch can be gotten by from its neighbors 
    **/
-  void exacomm_dragonfly_topology::route_minimal_individual_switch(switch_id src) {
+  void exacomm_dragonfly_topology::route_minimal_individual_switch(switch_id src, int& max_dist) {
     std::vector<int>& distance_vector = distance_matrix_[src];
     std::vector<switch_id>& parent_vector = routing_table_[src];
 
@@ -316,8 +300,8 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
     for (int i = 0; i <= max_switch_id_; i++) {
       visited[i] = false;
     }
-    std::fill(distance_vector.begin(), distance_vector.end(), INT_MAX);
-    distance_vector[src] = 0;
+    std::fill(distance_matrix_[src].begin(), distance_matrix_[src].end(), INT_MAX);
+    distance_matrix_[src][src] = 0;
     switch_id curr_switch = src;
     std::queue<switch_id> queue;
     queue.push(src);
@@ -328,38 +312,43 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
       for (auto link : outgoing_adjacency_list_[curr_switch]) {
         switch_id neighbor = link->get_dst();
         assert(link->get_src() == curr_switch);
-        distance_vector[neighbor];
+        //distance_matrix_[src][neighbor];
         
-        distance_vector[curr_switch];
         
-        if (distance_vector[neighbor] > distance_vector[curr_switch] + 1) {
+        if (distance_matrix_[src][neighbor] > distance_matrix_[src][curr_switch] + 1) {
         
-          distance_vector[neighbor] = distance_vector[curr_switch] + 1;
-          parent_vector[neighbor] = curr_switch;
-        
-        } //else if ((distance_vector[neighbor] == distance_vector[curr_switch] + 1) && visited[neighbor]) {
-          //if (switch_usage_[parent_vector[neighbor]] > switch_usage_[curr_switch]) {
-            //assert(switch_usage_[parent_vector[neighbor]] > 0);
-            //switch_usage_[parent_vector[neighbor]]--;
-            //parent_vector[neighbor] = curr_switch;
-            //switch_usage_[curr_switch]++;
-          //}
-        //}
+          distance_matrix_[src][neighbor] = distance_matrix_[src][curr_switch] + 1;
+          routing_table_[curr_switch][neighbor] = curr_switch;
+        } else if (load_balance_routing_ && ((distance_vector[neighbor] == distance_vector[curr_switch] + 1) && visited[neighbor])) {
+          if (switch_usage_[routing_table_[curr_switch][neighbor]] > switch_usage_[curr_switch]) {
+            assert(switch_usage_[routing_table_[curr_switch][neighbor]] > 0);
+            switch_usage_[routing_table_[curr_switch][neighbor]]--;
+            routing_table_[curr_switch][neighbor] = curr_switch;
+            switch_usage_[curr_switch]++;
+          }
+        }
         if (!visited[neighbor]) {
           queue.push(neighbor);
         }  
       }
     }
+
+    for (int i = 0; i <= max_switch_id_; i++) {
+      if (distance_matrix_[src][i] > max_dist) {
+        max_dist = distance_matrix_[src][i];
+      }
+    }
     return;
   }
 
-  void exacomm_dragonfly_topology::route_minimal_topology() {
+  void exacomm_dragonfly_topology::route_minimal_topology(int& max_dist) {
     switch_usage_.resize(max_switch_id_ + 1);
     routing_table_.resize(max_switch_id_ + 1);
+    max_dist = 0;
     std::fill(switch_usage_.begin(), switch_usage_.end(), 0);
     for (int i = 0; i <= max_switch_id_; i++ ) {
       routing_table_[i].resize(max_switch_id_ + 1);
-      route_minimal_individual_switch(i);
+      route_minimal_individual_switch(i, max_dist);
     }
     return;
   }
