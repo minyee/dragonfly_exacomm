@@ -103,7 +103,7 @@ public:
    * @return The max switch id
    */
   virtual switch_id max_switch_id() const override{ // DONE
-    return num_groups_ * switches_per_group_ - 1;
+    return num_groups_ * switches_per_group_;
   };
 
   /**
@@ -125,7 +125,7 @@ public:
    * @return The max node id
    */
   virtual node_id max_node_id() const override{ // DONE
-    return num_groups_ * switches_per_group_ * nodes_per_switch_ - 1;
+    return (num_groups_ * switches_per_group_ * nodes_per_switch_) ;
   };
 
   /**
@@ -219,6 +219,16 @@ public:
     @return The number of hops to final destination
   */
   virtual int num_hops_to_node(node_id src, node_id dst) const override;
+
+  /**
+   * @brief configure_switch_params By default, almost all topologies
+   *        have uniform switch parameters.
+   * @param src
+   * @param switch_params In/out parameter. Input is default set of params.
+   *        Output is non-default unique params.
+   */
+  virtual void configure_nonuniform_switch_params(switch_id src,
+        sprockit::sim_parameters* switch_params) const override;
 
   /**
      For a given input switch, return all nodes connected to it.
