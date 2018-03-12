@@ -117,6 +117,8 @@ void exacomm_dragonfly_topology::configure_vc_routing(std::map<routing::algorith
   return;
 };
 
+
+
 switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint16_t& port) const {
   switch_id swid = addr / nodes_per_switch_; // this gives us the switch id of the switch node addr is connected to
   int ind = addr % nodes_per_switch_;
@@ -192,7 +194,8 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
   }; 
 
   switch_id exacomm_dragonfly_topology::max_netlink_id() const {
-    return max_switch_id_;
+    return 0;
+    //return max_switch_id_;
   };
 
   bool exacomm_dragonfly_topology::netlink_id_slot_filled(node_id nid) const {

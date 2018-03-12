@@ -156,7 +156,13 @@ public:
    */
   virtual int max_num_ports() const override { // DONE (RECHECK)
   	//return std::max(optical_switch_radix_, electrical_switch_radix_);
-    return switches_per_group_ + nodes_per_switch_; // + 1 - 1
+    int max_port_cnt = 0;
+    for (int i = 0; i <= max_switch_id_; i++) {
+      if (max_port_cnt < (outgoing_adjacency_list_[i].size() + nodes_per_switch_)) {
+        max_port_cnt = outgoing_adjacency_list_[i].size() + nodes_per_switch_;
+      }
+    }
+    return max_port_cnt; // + 1 - 1
   }
 
   /**
