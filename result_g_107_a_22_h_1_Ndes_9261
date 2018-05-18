@@ -1,0 +1,38 @@
+Initialized the dragonfly topology
+GOT OUT OF FORM TOPOLOGY
+WE ARE IN GREEDY JOB LAUNCHER: HANDLE LAUNCH REQUEST
+Running problem size 30^3 per domain until completion
+Num processors: 9261
+Total number of elements: 250047000
+
+To run other sizes, use -s <integer>.
+To run a fixed number of iterations, use -i <integer>.
+To run a more or less balanced region set, use -b <integer>.
+To change the relative costs of regions, use -c <integer>.
+To print out progress, use -p
+To write an output file for VisIt, use -v
+See help (-h) for more options
+
+cycle = 1, time = 1.074072e-06, dt=1.074072e-06
+cycle = 2, time = 2.148144e-06, dt=1.074072e-06
+cycle = 3, time = 3.222216e-06, dt=1.074072e-06
+cycle = 4, time = 4.296288e-06, dt=1.074072e-06
+cycle = 5, time = 5.370359e-06, dt=1.074072e-06
+Run completed:  
+   Problem size        =  30 
+   MPI tasks           =  9261 
+   Iteration count     =  5 
+CalcLagrangeElements                =   0.00667100s
+CalcQForElems                       =   0.08114100s
+UpdateVolumesForElems               =   0.00010800s
+ApplyMaterialPropertiesForElems     =   0.01347200s
+CalcTimeConstraintsForElems         =   0.00011500s
+CalcAccelerationForNodes            =   0.00000400s
+InitStressTermsForElems             =   0.00000500s
+IntegrateStressForElems             =   0.00965200s
+CalcHourglassControlForElems        =   0.03674600s
+CalcVelocityForNodes                =   0.00000900s
+CalcPositionForNodes                =   0.00000500s
+Total time =   0.51134900s
+*** Event queue empty, exiting simulation... ***
+Simulation is complete, simulated time: 18.4467 Ms

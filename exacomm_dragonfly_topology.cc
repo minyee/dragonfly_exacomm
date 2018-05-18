@@ -26,7 +26,7 @@ RegisterKeywords(
  exacomm_dragonfly_topology::exacomm_dragonfly_topology(sprockit::sim_parameters* params) : 
                               structured_topology(params,InitMaxPortsIntra::I_Remembered, 
                                                   InitGeomEjectID::I_Remembered) {
- 	num_groups_ = params->get_int_param("groups"); // controls g
+  num_groups_ = params->get_int_param("groups"); // controls g
  	switches_per_group_ = params->get_int_param("switches_per_group"); // controls a
  	nodes_per_switch_ = params->get_optional_int_param("nodes_per_switch", 4);
 
@@ -34,6 +34,7 @@ RegisterKeywords(
   bool load_balancing_routing_ = params->get_optional_bool_param("load_balance_routing", false); 
   std::string filename = params->get_param("adjacency_matrix_filename");
   max_switch_id_ = (num_groups_ * switches_per_group_) - 1;
+
   outgoing_adjacency_list_.resize(num_groups_ * switches_per_group_);
   //incoming_adjacency_list_.resize(num_groups_ * switches_per_group_); // incoming adjacency list is somewhat redundant information
   distance_matrix_.resize(max_switch_id_ + 1);
@@ -53,7 +54,6 @@ RegisterKeywords(
   }
   diameter_ = 0;
   route_minimal_topology(diameter_);
-  
  };
 
  exacomm_dragonfly_topology::~exacomm_dragonfly_topology() {
@@ -248,6 +248,8 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
     double optical_bw = link_params->get_bandwidth_param("optical_link_bandwidth");
     long credits = switch_params->get_optional_long_param("credits", 100000000);
     
+    //std::cout << "Switch " << std::to_string(src) << ":" << std::endl;
+
     for (int i = 0; i < outgoing_adjacency_list_[src].size(); i++) {
       
       dfly_link* dlink = outgoing_adjacency_list_[src][i];
@@ -257,6 +259,12 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
         topology::setup_port_params(dlink->get_src_outport(), credits, electrical_bw, link_params, switch_params);
       else
         topology::setup_port_params(dlink->get_src_outport(), 100*credits, optical_bw, link_params, switch_params);
+
+      //std::string portname = "port";
+      //sprockit::sim_parameters* port_param = switch_params->get_namespace(portname + std::to_string(i));
+      //double bw = port_param->get_bandwidth_param("bandwidth");
+      //std::cout << "port" << std::to_string(i) << ": " << std::to_string(bw) << std::endl;
+
     }
     
     return;
@@ -269,7 +277,9 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
       switch_params->add_param_override("switches_per_group", int(switches_per_group_));
       switch_params->add_param_override("num_groups", int(num_groups_));
     } else if (!model_name.compare("pisces")) { 
-      
+      // still need to figure out what to fill in here
+    } else if (!mode_name.compare("sculpin")) {
+
     }
     return;
   };
@@ -310,7 +320,6 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
         i++;
       }
     } else {
-      
       spkt_abort_printf("Cannot Open the adjacency_matrix file");
     }
   };

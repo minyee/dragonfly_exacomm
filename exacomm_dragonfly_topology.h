@@ -21,7 +21,7 @@ namespace hw {
 
 
 class exacomm_dragonfly_topology : public structured_topology {
-  FactoryRegister("exacomm_dragonfly_topology", topology, exacomm_dragonfly_topology)
+  FactoryRegister("exacomm_dragonfly", topology, exacomm_dragonfly_topology)
 public:
 //FactoryRegister("exacomm_dragonfly_topology", topology, exacomm_dragonfly_topology, "This is dragonfly topology for exacomm dragonfly design space exploration project");
 /*
@@ -39,7 +39,7 @@ virtual int diameter() const override {
 
 public:
  virtual std::string to_string() const override {
-  return "exacomm_dragonfly_topology";
+  return "exacomm_dragonfly";
  };
  
   exacomm_dragonfly_topology(sprockit::sim_parameters* params);
@@ -187,12 +187,6 @@ public:
   virtual switch_id netlink_to_ejection_switch(
         netlink_id nodeaddr, uint16_t& switch_port) const override;
 
-  /**
-   * @brief configure_vc_routing  Configure the number of virtual channels
-   *        required for all supported routing algorithms
-   * @param [inout] m
-   */
-  virtual void configure_vc_routing(std::map<routing::algorithm_t, int>& m) const override; // DONE (RECHECK)
 
   virtual void configure_individual_port_params(switch_id src,
           sprockit::sim_parameters* switch_params) const override;

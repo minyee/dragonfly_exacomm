@@ -1,5 +1,5 @@
 TARGET := libdfly_exploration.so 
-SRC := exacomm_dragonfly_topology.cc dragonfly_switch.cc 
+SRC := exacomm_dragonfly_topology.cc dragonfly_switch.cc  exacomm_dragonfly_ugal_router.cc exacomm_dragonfly_ugalG_router.cc exacomm_dragonfly_valiant_router.cc exacomm_dragonfly_par_router.cc
 
 CXX :=    libsst++
 CC :=     libsstcc
