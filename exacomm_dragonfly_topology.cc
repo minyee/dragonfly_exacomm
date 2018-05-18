@@ -72,7 +72,7 @@ RegisterKeywords(
   **/
  void exacomm_dragonfly_topology::minimal_route_to_switch(switch_id src_switch_addr, 
  												switch_id dst_switch_addr, 
- 												routable::path& path) const {
+ 												packet::path& path) const {
   int dist = 0;
   switch_id curr_switch = dst_switch_addr;
   switch_id parent = curr_switch;
@@ -102,19 +102,11 @@ void exacomm_dragonfly_topology::connected_outports(const switch_id src,
     conns[i].src_outport = outgoing_adjacency_list_[src][i]->get_src_outport(); 
     conns[i].dst_inport = outgoing_adjacency_list_[src][i]->get_dst_inport(); 
   }
-}
+};
 
 
 bool exacomm_dragonfly_topology::switch_id_slot_filled(switch_id sid) const {
   return (sid <= max_switch_id_);
-}
-
-void exacomm_dragonfly_topology::configure_vc_routing(std::map<routing::algorithm_t, int>& m) const {
-  m.insert({routing::minimal, 3});
-  m.insert({routing::minimal_adaptive, 3});
-  m.insert({routing::valiant, 3});
-  m.insert({routing::ugal, 3});
-  return;
 };
 
 
@@ -278,7 +270,7 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
       switch_params->add_param_override("num_groups", int(num_groups_));
     } else if (!model_name.compare("pisces")) { 
       // still need to figure out what to fill in here
-    } else if (!mode_name.compare("sculpin")) {
+    } else if (!model_name.compare("sculpin")) {
 
     }
     return;

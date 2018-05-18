@@ -266,7 +266,7 @@ public:
   virtual void minimal_route_to_switch( //this is really the key
     switch_id current_sw_addr,
     switch_id dest_sw_addr,
-    routable::path& path) const override;
+    packet::path& path) const override;
 
   virtual bool node_to_netlink(node_id nid, node_id& net_id, int& offset) const override;
 

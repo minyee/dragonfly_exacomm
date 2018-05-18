@@ -137,7 +137,7 @@ namespace hw {
 	 * Receiving a packet or message from another switch, not from a node.
 	 **/
 	void dragonfly_switch::recv_payload(event* ev) { 
-  		pisces_default_packet* msg = safe_cast(pisces_default_packet, ev);
+  		packet* msg = safe_cast(packet, ev);
   		int dst = msg->toaddr();
 		int dst_switch = dtop_->node_to_switch(dst);
 		int dst_group = dtop_->group_from_swid(dst_switch);
@@ -150,7 +150,7 @@ namespace hw {
 			eh = nodal_outport_handlers_[outport];
 			//send_delayed_to_link(electrical_delay, nodal_outport_handlers_[outport], ev);
 		} else {
-			routable::path pth;
+			packet::path pth;
 			dtop_->minimal_route_to_switch(my_addr_, dst_switch, pth);
 			outport = pth.outport();
 			if (outport >= switch_outport_handlers_.size())
@@ -172,7 +172,7 @@ namespace hw {
 	 * the network 
 	 **/
 	void dragonfly_switch::recv_nodal_payload(event* ev) {
-		pisces_default_packet* msg = safe_cast(pisces_default_packet, ev);
+		packet* msg = safe_cast(packet, ev);
 		int src = msg->fromaddr();
 		int dst = msg->toaddr();
 		int src_switch = dtop_->node_to_switch(src);
@@ -188,7 +188,7 @@ namespace hw {
 			outport = dst % nodes_per_switch_;
 			eh = nodal_outport_handlers_[outport];
 		} else {
-			routable::path pth;
+			packet::path pth;
 			dtop_->minimal_route_to_switch(my_addr_, dst_switch, pth); // CONTINUE HERE, THIS IS WHERE IT FAILS
 			outport = pth.outport();
 			if (outport >= switch_outport_handlers_.size())

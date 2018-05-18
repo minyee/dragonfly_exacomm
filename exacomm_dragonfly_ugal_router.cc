@@ -7,7 +7,7 @@
 #include <sstmac/common/event_manager.h>
 
 #include "exacomm_dragonfly_ugal_router.h"  
-#include "flexfly_topology_simplified.h"
+
 
 
 
@@ -23,7 +23,7 @@ exacomm_dragonfly_ugal_router::exacomm_dragonfly_ugal_router(sprockit::sim_param
   val_preference_factor_ = params->get_optional_int_param("valiant_preference_factor",1);
   seed_ = params->get_optional_int_param("seed", 30);
   ic_ = nullptr;
-  dtop_ = safe_cast(flexfly_topology_simplified, top);
+  dtop_ = safe_cast(exacomm_dragonfly_topology, top);
 };
 
 
