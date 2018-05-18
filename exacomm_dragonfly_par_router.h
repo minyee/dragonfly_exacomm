@@ -7,7 +7,7 @@
 #include <sstmac/hardware/topology/topology.h>
 #include <sstmac/hardware/interconnect/interconnect.h>
 
-#include "flexfly_topology_simplified.h" 
+#include "exacomm_dragonfly_topology.h" 
 
 
 

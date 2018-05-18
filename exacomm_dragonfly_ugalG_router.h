@@ -54,7 +54,7 @@ class exacomm_dragonfly_ugalG_router : public ugal_router
 
   void route_to_dest(packet* pkt);
 
-  exacomm_dragonfly_topology_simplified* ftop_;
+  exacomm_dragonfly_topology* dtop_;
   
   hw::interconnect* ic_;
 };  

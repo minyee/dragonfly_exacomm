@@ -15,7 +15,7 @@ exacomm_dragonfly_valiant_router::exacomm_dragonfly_valiant_router(sprockit::sim
 {
   seed_ = params->get_optional_int_param("seed", 30);
   ic_ = nullptr;
-  dtop_ = safe_cast(exacomm_dragonfly_topology_simplified, top);
+  dtop_ = safe_cast(exacomm_dragonfly_topology, top);
 };
 
 

@@ -34,7 +34,7 @@ exacomm_dragonfly_ugalG_router::exacomm_dragonfly_ugalG_router(sprockit::sim_par
   //val_threshold_ = params->get_optional_int_param("ugal_threshold", 0);
   //val_preference_factor_ = params->get_optional_int_param("valiant_preference_factor",1);
   ic_ = nullptr;
-  ftop_ = safe_cast(exacomm_dragonfly_topology_simplified, top);
+  dtop_ = safe_cast(exacomm_dragonfly_topology, top);
 };
 
 
@@ -48,7 +48,7 @@ void exacomm_dragonfly_ugalG_router::route_to_intermediate_group_stage(packet* p
   switch_id target_group = my_addr_;
   uint16_t port;
   
-  switch_id ej_addr = ftop_->node_to_injection_switch(pkt->toaddr(), port);
+  switch_id ej_addr = dtop_->node_to_injection_switch(pkt->toaddr(), port);
   
   if (ic_ == nullptr) ic_ = netsw_->event_mgr()->interconn();
   
@@ -57,13 +57,13 @@ void exacomm_dragonfly_ugalG_router::route_to_intermediate_group_stage(packet* p
 
   std::vector<topology::connection> reachable_groups_from_src;
   
-  ftop_->connected_outports(my_addr_, reachable_groups_from_src);
+  dtop_->connected_outports(my_addr_, reachable_groups_from_src);
   for (auto global_link : reachable_groups_from_src) {
     
     switch_id intermediate_grp = global_link.dst;
     if (intermediate_grp == my_addr_ || intermediate_grp == ej_addr) continue;
     std::vector<topology::connection> groups_reachable_from_intermediate_group;
-    ftop_->connected_outports(intermediate_grp, groups_reachable_from_intermediate_group);
+    dtop_->connected_outports(intermediate_grp, groups_reachable_from_intermediate_group);
     bool is_connected_to_ej_grp = false;
     network_switch* intermediate_group_switch = ic_->switch_at(intermediate_grp);
     uint64_t intermediate_switch_queue_length = intermediate_group_switch->queue_length(global_link.dst_inport);
@@ -96,7 +96,7 @@ void exacomm_dragonfly_ugalG_router::route_to_intermediate_group_stage(packet* p
 
 void exacomm_dragonfly_ugalG_router::route_to_dest(packet* pkt) {
   uint16_t outport;
-  switch_id ej_addr = ftop_->node_to_ejection_switch(pkt->toaddr(), outport);
+  switch_id ej_addr = dtop_->node_to_ejection_switch(pkt->toaddr(), outport);
   pkt->set_dest_switch(ej_addr);
 }
 
@@ -111,8 +111,8 @@ void exacomm_dragonfly_ugalG_router::route_to_dest(packet* pkt) {
 void exacomm_dragonfly_ugalG_router::route(packet* pkt) {
   uint16_t in_port;
   uint16_t out_port;
-  switch_id ej_addr = ftop_->node_to_injection_switch(pkt->toaddr(), out_port);
-  switch_id inj_addr = ftop_->node_to_injection_switch(pkt->fromaddr(), in_port);
+  switch_id ej_addr = dtop_->node_to_injection_switch(pkt->toaddr(), out_port);
+  switch_id inj_addr = dtop_->node_to_injection_switch(pkt->fromaddr(), in_port);
 
   if (my_addr_ == inj_addr) {
     header* hdr = pkt->get_header<header>();
@@ -136,7 +136,7 @@ void exacomm_dragonfly_ugalG_router::route(packet* pkt) {
       route_to_dest(pkt);
       break;
   }
-  ftop_->minimal_route_to_switch(my_addr_, pkt->dest_switch(), pth); // route minimally to said group
+  dtop_->minimal_route_to_switch(my_addr_, pkt->dest_switch(), pth); // route minimally to said group
   return;
 };
 
