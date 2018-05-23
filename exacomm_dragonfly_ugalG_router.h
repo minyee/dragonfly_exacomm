@@ -20,10 +20,18 @@ namespace hw {
  */
 class exacomm_dragonfly_ugalG_router : public ugal_router
 {
+
+  static const char initial_stage = 0;
+  static const char hop_to_entry_stage = 1;
+  static const char hop_to_exit_stage = 2;
+  static const char final_stage = 3;
+  static const char intra_grp_stage = 4;
+
   struct header : public ugal_router::header {
-    char stage : 3;
-    uint16_t entrySWID;
-    uint16_t exitSWID;
+    uint8_t num_group_hops : 2;
+    uint16_t entry_swid;
+    uint16_t exit_swid;
+    uint16_t interGrp;
   };
   public:
   FactoryRegister("exacomm_dragonfly_simplified_ugalG", router, exacomm_dragonfly_ugalG_router,
@@ -50,11 +58,11 @@ class exacomm_dragonfly_ugalG_router : public ugal_router
   int val_preference_factor_;
  
  private:
-  void route_to_intermediate_group_stage(packet* pkt);
+  void select_ugalG_intermediate(packet* pkt, switch_id ej_addr) const; 
 
-  void route_to_dest(packet* pkt);
+  void find_min_group_link(int src_grp, int dst_grp, switch_id& swid, int& queue_length) const;
 
-  exacomm_dragonfly_topology* dtop_;
+  exacomm_dragonfly_topology* dfly_;
   
   hw::interconnect* ic_;
 };  

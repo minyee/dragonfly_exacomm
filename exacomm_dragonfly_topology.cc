@@ -40,15 +40,19 @@ RegisterKeywords(
   distance_matrix_.resize(max_switch_id_ + 1);
   switch_usage_.resize(max_switch_id_ + 1);
   routing_table_.resize(max_switch_id_ + 1);
+  group_to_group_connections_.resize(num_groups_);
+  for (int grp = 0; grp < num_groups_; grp++) {
+    group_to_group_connections_[grp].resize(num_groups_);
+  }
   for (int i = 0; i <= max_switch_id_; i++) {
     distance_matrix_[i].resize(max_switch_id_ + 1);
     routing_table_[i].resize(max_switch_id_ + 1);
   }
   // now figure out what the adjacency matrix of the entire topology looks like
   // more importantly how do I transfer that information from
-  if (!is_canonical)
+  if (!is_canonical) {
     form_topology(filename);
-  else {
+  } else {
     switches_per_group_ = num_groups_ - 1;
     form_canonical_dragonfly();
   }
@@ -300,11 +304,17 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
           int cnt = std::stoi(entry, 0);
           if (cnt > 0) {
             sstmac::hw::Link_Type ltype = Electrical;
-            if (group_from_swid(i) != group_from_swid(j)) ltype = Optical;
+            int src_group = group_from_swid(i);
+            int dst_group = group_from_swid(j);
+            if (src_group != dst_group) {
+              ltype = Optical;
+              group_to_group_connections_[src_group][dst_group].push_back(std::make_pair(i, last_used_outport[i]));
+            }
             outgoing_adjacency_list_[i].push_back(new dfly_link(i, last_used_outport[i], j , last_used_inport[j], ltype));
             //incoming_adjacency_list_[j].push_back(new dfly_link(i, last_used_outport[i], j , last_used_inport[j], ltype));
             last_used_outport[i]++;
             last_used_inport[j]++;
+
           }
           entry = std::strtok(NULL, " ");
           j++;
@@ -391,12 +401,10 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
         for (int j = i + 1; j < switches_per_group_; j++) {
           switch_id dst = group_offset + j;
           outgoing_adjacency_list_[src].push_back(new dfly_link(src, outports[src], dst , inports[dst], Electrical));
-          //incoming_adjacency_list_[dst].push_back(new dfly_link(src, outports[src], dst , inports[dst], Electrical));
           outports[src]++;
           inports[dst]++;
 
           outgoing_adjacency_list_[dst].push_back(new dfly_link(dst, outports[dst], src , inports[src], Electrical));
-          //incoming_adjacency_list_[src].push_back(new dfly_link(dst, outports[dst], src , inports[src], Electrical));
           outports[dst]++;
           inports[src]++;
         }
@@ -405,27 +413,36 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
     switch_id last_group_used_switch[num_groups_];
     std::memset(&last_group_used_switch, 0, sizeof(switch_id) * num_groups_);
     for (int src_group = 0; src_group < num_groups_ - 1; src_group++) {
-      //switch_id src = (src_group * switches_per_group_) + last_group_used_switch[src_group];
       for (int dst_group = src_group + 1; dst_group < num_groups_; dst_group++) {
         switch_id src = (src_group * switches_per_group_) + last_group_used_switch[src_group];
         switch_id dst = (dst_group * switches_per_group_) + last_group_used_switch[dst_group];
 
+        // NEWLY ADDED 05/22/2018 - JASON (BEGIN)
+        group_to_group_connections_[src_group][dst_group].push_back(std::make_pair(src, outports[src])); // bidirectional link
+        group_to_group_connections_[dst_group][src_group].push_back(std::make_pair(dst, outports[dst])); // bidirectional link
+        // NEWLY ADDED 05/22/2018 - JASON (END)
+
+
         outgoing_adjacency_list_[src].push_back(new dfly_link(src, outports[src], dst , inports[dst], Optical));
-        //incoming_adjacency_list_[dst].push_back(new dfly_link(src, outports[src], dst , inports[dst], Optical));
         outports[src]++;
         inports[dst]++;
-
         outgoing_adjacency_list_[dst].push_back(new dfly_link(dst, outports[dst], src , inports[src], Optical));
-        //incoming_adjacency_list_[src].push_back(new dfly_link(dst, outports[dst], src , inports[src], Optical));
         outports[dst]++;
         inports[src]++;
-
         last_group_used_switch[src_group]++;
         last_group_used_switch[dst_group]++;
       }
     }
 
   };
+
+  void exacomm_dragonfly_topology::switches_connecting_groups(int src_group, 
+                                  int dst_group, 
+                                  std::vector<std::pair<switch_id, int>>& switch_port_pairs) const {
+    for (auto pair : group_to_group_connections_[src_group][dst_group]) {
+      switch_port_pairs.push_back(std::make_pair(pair.first, pair.second));
+    }
+  }
 }
 }
 

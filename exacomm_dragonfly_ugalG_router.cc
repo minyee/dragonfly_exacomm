@@ -30,93 +30,88 @@ struct triple_tuple {
 exacomm_dragonfly_ugalG_router::exacomm_dragonfly_ugalG_router(sprockit::sim_parameters *params, topology *top, network_switch *netsw)
   :  ugal_router(params, top, netsw)
 {
-  
-  //val_threshold_ = params->get_optional_int_param("ugal_threshold", 0);
-  //val_preference_factor_ = params->get_optional_int_param("valiant_preference_factor",1);
   ic_ = nullptr;
-  dtop_ = safe_cast(exacomm_dragonfly_topology, top);
+  dfly_ = safe_cast(exacomm_dragonfly_topology, top);
 };
 
 
 
-/********************************************************************************************
- **** Main algorithm for finding the best intermediate group to route to
- ********************************************************************************************/
-void exacomm_dragonfly_ugalG_router::route_to_intermediate_group_stage(packet* pkt) {
-  header* hdr = pkt->get_header<header>();
-  std::vector<triple_tuple> intermediate_group_collection;
-  switch_id target_group = my_addr_;
-  uint16_t port;
-  
-  switch_id ej_addr = dtop_->node_to_injection_switch(pkt->toaddr(), port);
-  
-  if (ic_ == nullptr) ic_ = netsw_->event_mgr()->interconn();
-  
-  //const std::vector<network_switch*>& smap = ic_->switches();
-  network_switch* ej_switch = ic_->switch_at(ej_addr);
-
-  std::vector<topology::connection> reachable_groups_from_src;
-  
-  dtop_->connected_outports(my_addr_, reachable_groups_from_src);
-  for (auto global_link : reachable_groups_from_src) {
-    
-    switch_id intermediate_grp = global_link.dst;
-    if (intermediate_grp == my_addr_ || intermediate_grp == ej_addr) continue;
-    std::vector<topology::connection> groups_reachable_from_intermediate_group;
-    dtop_->connected_outports(intermediate_grp, groups_reachable_from_intermediate_group);
-    bool is_connected_to_ej_grp = false;
-    network_switch* intermediate_group_switch = ic_->switch_at(intermediate_grp);
-    uint64_t intermediate_switch_queue_length = intermediate_group_switch->queue_length(global_link.dst_inport);
-
-    for (auto intermediate_outgoing_link : groups_reachable_from_intermediate_group) {
-      if (intermediate_outgoing_link.dst == ej_addr) {
-
-        intermediate_group_collection.push_back(triple_tuple(intermediate_grp, 
-                                                global_link.src_outport, 
-                                                intermediate_switch_queue_length + ej_switch->queue_length(intermediate_outgoing_link.dst_inport)));
-        is_connected_to_ej_grp = true;
-        break;
-      }
+void exacomm_dragonfly_ugalG_router::find_min_group_link(int grp, int dst_group, switch_id& min_exit_swid, int& min_total_length) const {
+  // first find the list of all the switches in grp that leads to the final destination group
+  int switches_per_group = dfly_->switches_per_group();
+  std::vector<std::pair<switch_id, int>> spp; // short for switch_port_pair
+  dfly_->switches_connecting_groups(grp, dst_group, spp);
+  min_total_length = INT_MAX;
+  for (auto pair : spp) {
+    switch_id entry_point_swid = pair.first;
+    network_switch* netsw = ic_->switch_at(entry_point_swid);
+    if (min_total_length > netsw->queue_length(pair.second)) {
+      min_total_length = netsw->queue_length(pair.second);
+      min_exit_swid = entry_point_swid;
     }
   }
-  uint32_t min_queue_len =1e6; 
-  for (auto intermediate_grp_tuple : intermediate_group_collection) {
-    if (intermediate_grp_tuple.total_queue_length < min_queue_len) {
-      target_group = intermediate_grp_tuple.intermediate_group;
-      min_queue_len = intermediate_grp_tuple.total_queue_length;
-    }
-  }
-  hdr->stage = intermediate_stage;
-  assert(target_group != my_addr_); // not moving any closer to the target
-  pkt->set_dest_switch(target_group);
-  
   return;
-}; 
+}
 
+void exacomm_dragonfly_ugalG_router::select_ugalG_intermediate(packet* pkt, switch_id ej_addr) const {  
+  // we want to select an intermediate group switch, but what if that switch is not a gateway switch at the intermediate group
 
-void exacomm_dragonfly_ugalG_router::route_to_dest(packet* pkt) {
-  uint16_t outport;
-  switch_id ej_addr = dtop_->node_to_ejection_switch(pkt->toaddr(), outport);
-  pkt->set_dest_switch(ej_addr);
+  // Phase I:
+  // find out all the basic information here first, initialize all the relevant information here
+  node_id src_nid = pkt->fromaddr();
+  switch_id src_swid = dfly_->node_to_switch(src_nid);
+  switch_id dst_swid = ej_addr;
+  int src_group = dfly_->group_from_swid(src_swid);
+  int dst_group = dfly_->group_from_swid(dst_swid);
+  int curr_group = dfly_->group_from_swid(my_addr_);
+  int min_total_length = 1e8;
+
+  // Phase II:
+  if (curr_group == dst_group || src_group == dst_group) return; // do nothing
+
+  // if we are here, then we should randomly select an intermediate group
+  switch_id final_entry_switch;
+  switch_id final_exit_switch;
+  
+  find_min_group_link(curr_group, dst_group, final_entry_switch, min_total_length);
+
+  for (int grp  = 0; grp < dfly_->num_groups(); grp++) {
+    if (grp == curr_group || grp == src_group || grp == dst_group) continue;
+    switch_id entry_switch, exit_switch;
+    int entry_queue_length, exit_queue_length;
+    find_min_group_link(curr_group, grp, entry_switch, entry_queue_length);
+    find_min_group_link(grp, dst_group, exit_switch, exit_queue_length);
+    if (min_total_length > entry_queue_length + exit_queue_length) {
+      min_total_length = entry_queue_length + exit_queue_length;
+      final_entry_switch = entry_switch;
+      final_exit_switch = exit_switch;
+    }
+  }
+  header* hdr = pkt->get_header<header>();
+  hdr->entry_swid = final_entry_switch;
+  hdr->exit_swid = final_exit_switch;
+
+  return;
 }
 
 
 /********************************************************************************************
+ ********************************************************************************************
  **** Main algorithm for finding the best intermediate group to route to
+ ******************************************************************************************** 
  ********************************************************************************************/
-
-
-
 
 void exacomm_dragonfly_ugalG_router::route(packet* pkt) {
   uint16_t in_port;
   uint16_t out_port;
-  switch_id ej_addr = dtop_->node_to_injection_switch(pkt->toaddr(), out_port);
-  switch_id inj_addr = dtop_->node_to_injection_switch(pkt->fromaddr(), in_port);
+  switch_id ej_addr = dfly_->node_to_injection_switch(pkt->toaddr(), out_port);
+  switch_id inj_addr = dfly_->node_to_injection_switch(pkt->fromaddr(), in_port);
 
   if (my_addr_ == inj_addr) {
     header* hdr = pkt->get_header<header>();
-    hdr->stage = initial_stage;
+    hdr->stage_number = initial_stage; // set the stage to initial stage
+    select_ugalG_intermediate(pkt, ej_addr);
+    return;
   } 
   if (my_addr_ == ej_addr) {
     // All we want is to immediately eject the packet at this switch because we
@@ -125,18 +120,20 @@ void exacomm_dragonfly_ugalG_router::route(packet* pkt) {
     pkt->set_outport(out_port);
     return;
   }
+
   header* hdr = pkt->get_header<header>();
   packet::path& pth = pkt->current_path();
-  switch (hdr->stage) {
+  
+  switch (hdr->stage_number) {
     case (initial_stage):
-      route_to_intermediate_group_stage(pkt);
-      //pkt->set_dest_switch(ej_addr);
+      spkt_abort_printf("invalid stage number packet did not have stage initialized")
       break;
-    case (intermediate_stage):
+    case (hop_to_entry_stage):
       route_to_dest(pkt);
       break;
   }
-  dtop_->minimal_route_to_switch(my_addr_, pkt->dest_switch(), pth); // route minimally to said group
+
+  dfly_->minimal_route_to_switch(my_addr_, pkt->dest_switch(), pth); // route minimally to said group
   return;
 };
 

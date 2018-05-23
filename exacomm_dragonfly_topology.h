@@ -270,9 +270,6 @@ public:
 
   virtual bool node_to_netlink(node_id nid, node_id& net_id, int& offset) const override;
 
-  switch_id node_to_switch(node_id nid) const;
-
-  int group_from_swid (switch_id swid) const;
 
 
 private:
@@ -301,7 +298,6 @@ private:
 
  int diameter_;
 
-private:
  bool valid_switch_id(switch_id id) const {
     return id < (switches_per_group_ * num_groups_);
  };
@@ -318,6 +314,8 @@ private:
 
  void form_canonical_dragonfly();
 
+ std::vector<std::vector<std::vector<std::pair<switch_id, int>>>> group_to_group_connections_;
+
 public:
  int num_groups() {
  	return num_groups_;
@@ -330,14 +328,17 @@ public:
  int nodes_per_switch() {
   return nodes_per_switch_;
  };
-};
 
- /**
-  * Given a group connectivity matrix of dimension num_groups_ by num_groups_, configure the optical switches
-  * inport to outport connection vector for bandwidth_steering.
-  **/
- //void configure_optical_config(std::vector<std::vector<int>>& group_connectivity_matrix,
- //                               std::vector<std::vector<int>>& optical_switch_inout_configuration) {};
+  // computes the switch id to which node id nid belongs to
+ switch_id node_to_switch(node_id nid) const;
+
+  // computes from the switch id the group that the switch id in the argument belongs to
+ int group_from_swid (switch_id swid) const;
+
+ void switches_connecting_groups(int src_group, 
+                                  int dst_group, 
+                                  std::vector<std::pair<switch_id, int>>& switch_port_pairs) const; 
+};
 
 
 }
