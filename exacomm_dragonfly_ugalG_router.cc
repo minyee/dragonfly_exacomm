@@ -30,21 +30,25 @@ struct triple_tuple {
 exacomm_dragonfly_ugalG_router::exacomm_dragonfly_ugalG_router(sprockit::sim_parameters *params, topology *top, network_switch *netsw)
   :  ugal_router(params, top, netsw)
 {
-  ic_ = nullptr;
+  ic_ = nullptr; // HEREEEEEE
   dfly_ = safe_cast(exacomm_dragonfly_topology, top);
 };
 
 
 
-void exacomm_dragonfly_ugalG_router::find_min_group_link(int grp, int dst_group, switch_id& min_exit_swid, int& min_total_length) const {
+void exacomm_dragonfly_ugalG_router::find_min_group_link(int grp, int dst_group, switch_id& min_exit_swid, int& min_total_length) {
   // first find the list of all the switches in grp that leads to the final destination group
   int switches_per_group = dfly_->switches_per_group();
   std::vector<std::pair<switch_id, int>> spp; // short for switch_port_pair
   dfly_->switches_connecting_groups(grp, dst_group, spp);
+  std::cout << "in find min group link" << std::endl;
   min_total_length = INT_MAX;
+  if (!ic_) ic_ = netsw_->event_mgr()->interconn();
   for (auto pair : spp) {
     switch_id entry_point_swid = pair.first;
+    std::cout << "entry_point_swid : " << std::to_string(entry_point_swid) << std::endl; 
     network_switch* netsw = ic_->switch_at(entry_point_swid);
+    std::cout << "loop2" << std::endl; 
     if (min_total_length > netsw->queue_length(pair.second)) {
       min_total_length = netsw->queue_length(pair.second);
       min_exit_swid = entry_point_swid;
@@ -53,9 +57,9 @@ void exacomm_dragonfly_ugalG_router::find_min_group_link(int grp, int dst_group,
   return;
 }
 
-void exacomm_dragonfly_ugalG_router::select_ugalG_intermediate(packet* pkt, switch_id ej_addr) const {  
+void exacomm_dragonfly_ugalG_router::select_ugalG_intermediate(packet* pkt, switch_id ej_addr) {  
   // we want to select an intermediate group switch, but what if that switch is not a gateway switch at the intermediate group
-
+  std::cout << "select_ugalG_intermediate in " << std::endl;
   // Phase I:
   // find out all the basic information here first, initialize all the relevant information here
   node_id src_nid = pkt->fromaddr();
@@ -68,7 +72,7 @@ void exacomm_dragonfly_ugalG_router::select_ugalG_intermediate(packet* pkt, swit
 
   // Phase II:
   if (curr_group == dst_group || src_group == dst_group) return; // do nothing
-
+  std::cout << "000000" << std::endl;
   // if we are here, then we should randomly select an intermediate group
   switch_id final_entry_switch;
   switch_id final_exit_switch;
@@ -90,7 +94,7 @@ void exacomm_dragonfly_ugalG_router::select_ugalG_intermediate(packet* pkt, swit
   header* hdr = pkt->get_header<header>();
   hdr->entry_swid = final_entry_switch;
   hdr->exit_swid = final_exit_switch;
-
+  hdr->intermediate_grp = dfly_->group_from_swid(final_exit_switch);
   return;
 }
 
@@ -102,38 +106,84 @@ void exacomm_dragonfly_ugalG_router::select_ugalG_intermediate(packet* pkt, swit
  ********************************************************************************************/
 
 void exacomm_dragonfly_ugalG_router::route(packet* pkt) {
+  std::cout << "got in " << std::endl;
+  std::cout << "pkt: " << std::endl;
   uint16_t in_port;
   uint16_t out_port;
   switch_id ej_addr = dfly_->node_to_injection_switch(pkt->toaddr(), out_port);
   switch_id inj_addr = dfly_->node_to_injection_switch(pkt->fromaddr(), in_port);
-
-  if (my_addr_ == inj_addr) {
-    header* hdr = pkt->get_header<header>();
-    hdr->stage_number = initial_stage; // set the stage to initial stage
-    select_ugalG_intermediate(pkt, ej_addr);
-    return;
-  } 
-  if (my_addr_ == ej_addr) {
-    // All we want is to immediately eject the packet at this switch because we
-    // are at the ejection switch 
-    packet::path& pth = pkt->current_path();
-    pkt->set_outport(out_port);
-    return;
-  }
+  int dst_group = dfly_->group_from_swid(ej_addr);
+  int src_group = dfly_->group_from_swid(inj_addr);
+  int curr_group = dfly_->group_from_swid(my_addr_);
 
   header* hdr = pkt->get_header<header>();
   packet::path& pth = pkt->current_path();
+
+  std::cout << "here1 " << std::endl;
   
-  switch (hdr->stage_number) {
-    case (initial_stage):
-      spkt_abort_printf("invalid stage number packet did not have stage initialized")
-      break;
-    case (hop_to_entry_stage):
-      route_to_dest(pkt);
-      break;
+  if (my_addr_ == inj_addr) {
+    // be sure to initialize everything when we are at the initial stage
+    hdr->stage_number = initial_stage; // set the stage to initial stage
+    hdr->num_group_hops = 0;
+  } 
+
+  if (curr_group == dst_group) {
+    // we already are in the destination group, so no need to hop out of this group anymore
+    std::cout << "here2 " << std::endl;
+    hdr->stage_number = intra_grp_stage;
+    if (my_addr_ == ej_addr) {
+      // even better, if we've already reached the final destination, just eject the packet to node
+      pth.set_outport(out_port);
+      std::cout << "got out " << std::endl;
+      return;
+    }
   }
 
-  dfly_->minimal_route_to_switch(my_addr_, pkt->dest_switch(), pth); // route minimally to said group
+  if (my_addr_ == ej_addr) {
+    // All we want is to immediately eject the packet at this switch because we are at the ejection switch 
+    std::cout << "here3 " << std::endl;
+    pth.set_outport(out_port);
+    std::cout << "got out " << std::endl;
+    return;
+  }
+
+
+  std::cout << "here4" << std::endl;
+
+  switch (hdr->stage_number) {
+    case (initial_stage):
+      select_ugalG_intermediate(pkt, ej_addr);
+      hdr->stage_number = hop_to_entry_stage;
+      break;
+   
+    case (hop_to_entry_stage):
+      hdr->stage_number = hop_to_exit_stage;
+      pkt->set_dest_switch(hdr->entry_swid);
+      break;
+   
+    case (hop_to_exit_stage):
+      pkt->set_dest_switch(hdr->exit_swid); // set the destination switch to be the exit switch id which is embedded within the header
+      hdr->stage_number = intra_grp_stage;
+      break;
+   
+    case (intra_grp_stage):
+      
+    case (final_stage):
+      dfly_->minimal_route_to_switch(my_addr_, ej_addr, pth); // route minimally to said group
+      break;
+  }
+  
+
+
+
+
+  if (dfly_->is_global_port(my_addr_, pth.outport())) {
+    hdr->num_group_hops++;
+  }
+
+
+  assert(hdr->num_group_hops <= 2);
+  std::cout << "got out " << std::endl;
   return;
 };
 

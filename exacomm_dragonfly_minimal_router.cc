@@ -4,7 +4,7 @@
 #include <sprockit/sim_parameters.h>
 
 #include "exacomm_dragonfly_minimal_router.h"  
-#include "exacomm_dragonfly_topology.h"
+
 
 namespace sstmac {
 namespace hw {
@@ -14,7 +14,7 @@ exacomm_dragonfly_minimal_router::exacomm_dragonfly_minimal_router(sprockit::sim
 {
 
   sid_ = addr();
-  dtop_ = safe_cast(flexfly_topology_simplified, top);
+  dtop_ = safe_cast(exacomm_dragonfly_topology, top);
 };
 
 void exacomm_dragonfly_minimal_router::route(packet* pack) {

@@ -4,7 +4,7 @@
 #include <sstmac/hardware/router/ugal_routing.h>
 #include <sstmac/hardware/router/router.h>
 #include <sstmac/hardware/router/valiant_routing.h>
-#include "exacomm_dragonfly_topology_simplified.h"
+#include "exacomm_dragonfly_topology.h"
 namespace sstmac {
 namespace hw {
 

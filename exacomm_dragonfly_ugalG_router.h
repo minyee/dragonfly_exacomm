@@ -31,10 +31,10 @@ class exacomm_dragonfly_ugalG_router : public ugal_router
     uint8_t num_group_hops : 2;
     uint16_t entry_swid;
     uint16_t exit_swid;
-    uint16_t interGrp;
+    uint16_t intermediate_grp;
   };
   public:
-  FactoryRegister("exacomm_dragonfly_simplified_ugalG", router, exacomm_dragonfly_ugalG_router,
+  FactoryRegister("exacomm_dragonfly_ugalG", router, exacomm_dragonfly_ugalG_router,
               "router implementing ugal global-congestion-aware routing in the exacomm_dragonfly_topology")
   exacomm_dragonfly_ugalG_router(sprockit::sim_parameters* params, topology* top, network_switch* netsw);
   
@@ -58,9 +58,9 @@ class exacomm_dragonfly_ugalG_router : public ugal_router
   int val_preference_factor_;
  
  private:
-  void select_ugalG_intermediate(packet* pkt, switch_id ej_addr) const; 
+  void select_ugalG_intermediate(packet* pkt, switch_id ej_addr); 
 
-  void find_min_group_link(int src_grp, int dst_grp, switch_id& swid, int& queue_length) const;
+  void find_min_group_link(int src_grp, int dst_grp, switch_id& swid, int& queue_length);
 
   exacomm_dragonfly_topology* dfly_;
   

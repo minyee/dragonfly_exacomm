@@ -270,7 +270,7 @@ public:
 
   virtual bool node_to_netlink(node_id nid, node_id& net_id, int& offset) const override;
 
-
+  bool is_global_port(switch_id swid, int outport) const;
 
 private:
  uint32_t num_groups_; // equivalent to parameter g in Kim's paper

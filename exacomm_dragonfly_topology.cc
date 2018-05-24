@@ -31,8 +31,11 @@ RegisterKeywords(
  	nodes_per_switch_ = params->get_optional_int_param("nodes_per_switch", 4);
 
   bool is_canonical = params->get_optional_bool_param("canonical", false); // assume that by default, the dragonfly is not canonical
+  if (is_canonical) {
+    switches_per_group_ = num_groups_ - 1;
+  }
   bool load_balancing_routing_ = params->get_optional_bool_param("load_balance_routing", false); 
-  std::string filename = params->get_param("adjacency_matrix_filename");
+  std::string filename = params->get_optional_param("adjacency_matrix_filename", "");
   max_switch_id_ = (num_groups_ * switches_per_group_) - 1;
 
   outgoing_adjacency_list_.resize(num_groups_ * switches_per_group_);
@@ -242,9 +245,7 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
     sprockit::sim_parameters* link_params = switch_params->get_namespace("link");
     double electrical_bw = link_params->get_bandwidth_param("electrical_link_bandwidth");
     double optical_bw = link_params->get_bandwidth_param("optical_link_bandwidth");
-    long credits = switch_params->get_optional_long_param("credits", 100000000);
-    
-    //std::cout << "Switch " << std::to_string(src) << ":" << std::endl;
+    long credits = switch_params->get_optional_long_param("credits", 1000);
 
     for (int i = 0; i < outgoing_adjacency_list_[src].size(); i++) {
       
@@ -255,14 +256,8 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
         topology::setup_port_params(dlink->get_src_outport(), credits, electrical_bw, link_params, switch_params);
       else
         topology::setup_port_params(dlink->get_src_outport(), 100*credits, optical_bw, link_params, switch_params);
-
-      //std::string portname = "port";
-      //sprockit::sim_parameters* port_param = switch_params->get_namespace(portname + std::to_string(i));
-      //double bw = port_param->get_bandwidth_param("bandwidth");
-      //std::cout << "port" << std::to_string(i) << ": " << std::to_string(bw) << std::endl;
-
+     
     }
-    
     return;
   };
 
@@ -442,6 +437,22 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
     for (auto pair : group_to_group_connections_[src_group][dst_group]) {
       switch_port_pairs.push_back(std::make_pair(pair.first, pair.second));
     }
+  };
+
+  /**
+   ** Checks and see if the switch's corresponding outport is a global link
+   **/
+  bool exacomm_dragonfly_topology::is_global_port(switch_id swid, int outport) const {
+    bool def = false;
+    for (auto lnk : outgoing_adjacency_list_[swid]) {
+      if (lnk->get_src_outport() == outport) {
+        if (group_from_swid(swid) != group_from_swid(lnk->get_dst())) {
+          def = true;
+          break;
+        }
+      }
+    }
+    return def;
   }
 }
 }
