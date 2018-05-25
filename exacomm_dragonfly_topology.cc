@@ -83,6 +83,7 @@ RegisterKeywords(
   int dist = 0;
   switch_id curr_switch = dst_switch_addr;
   switch_id parent = curr_switch;
+  assert(src_switch_addr != dst_switch_addr);
   while (curr_switch != src_switch_addr) {
     if (dist > diameter_)
         spkt_abort_printf("ROUTING IS WRONG!!!!!!!!!!");
