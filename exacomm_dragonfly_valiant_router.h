@@ -35,14 +35,14 @@ class exacomm_dragonfly_valiant_router : public ugal_router
   static const char valiant_stage = 1;
   static const char final_stage = 2;
   
-  FactoryRegister("exacomm_dragonfly_simplified_ugal", router, exacomm_dragonfly_valiant_router,
-              "router implementing ugal congestion-aware routing in the exacomm_dragonfly_topology")
+  FactoryRegister("exacomm_dragonfly_valiant", router, exacomm_dragonfly_valiant_router,
+              "router implementing valiant load-balancing routing in the exacomm_dragonfly_topology")
 
   exacomm_dragonfly_valiant_router(sprockit::sim_parameters* params, topology* top, network_switch* netsw);
   
 
   std::string to_string() const override {
-    return "exacomm_dragonfly_simplified_ugal";
+    return "exacomm_dragonfly_valiant";
   };
 
   virtual int num_vc() const override {
@@ -56,10 +56,7 @@ class exacomm_dragonfly_valiant_router : public ugal_router
   int val_preference_factor_;
  
  private:
-
   exacomm_dragonfly_topology* dtop_;
-
-  hw::interconnect* ic_;
 
   uint32_t seed_;
 };

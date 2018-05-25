@@ -40,7 +40,7 @@ class exacomm_dragonfly_ugalG_router : public ugal_router
   
 
   std::string to_string() const override {
-    return "exacomm_dragonfly_simplified_ugal";
+    return "exacomm_dragonfly_ugalG";
   };
 
 

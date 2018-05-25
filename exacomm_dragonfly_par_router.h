@@ -20,7 +20,7 @@ namespace hw {
  * routing as described in PhD Thesis "Load-balanced in routing in interconnection networks"
  * by A Singh.
  */
-class flexfly_par_router : public ugal_router
+class exacomm_dragonfly_par_router : public ugal_router
 {
 
   struct header : public ugal_router::header {
@@ -29,21 +29,21 @@ class flexfly_par_router : public ugal_router
      char stage: 3;
   };
 
-  public:
-
   static const char initial = 0;
   static const char valiant_stage = 1;
   static const char minimal_stage = 2;   
   static const char final_stage = 3;
-  
+
+  public:
+
   FactoryRegister("exacomm_dragonfly_par", router, flexfly_par_router,
-              "router implementing ugal congestion-aware routing in the flexfly_topology")
+              "router implementing Progressive Adaptive Routing (PAR) in the exacomm_dragonfly_topology")
 
   flexfly_par_router(sprockit::sim_parameters* params, topology* top, network_switch* netsw);
   
 
   std::string to_string() const override {
-    return "flexfly_simplified_ugal";
+    return "exacomm_dragonfly_par";
   };
 
   virtual int num_vc() const override {

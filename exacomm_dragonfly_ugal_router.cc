@@ -22,8 +22,9 @@ exacomm_dragonfly_ugal_router::exacomm_dragonfly_ugal_router(sprockit::sim_param
   val_threshold_ = params->get_optional_int_param("ugal_threshold", 0);
   val_preference_factor_ = params->get_optional_int_param("valiant_preference_factor",1);
   seed_ = params->get_optional_int_param("seed", 30);
-  ic_ = nullptr;
   dtop_ = safe_cast(exacomm_dragonfly_topology, top);
+  netsw_ = netsw;
+  std::cout << "UGAL" << std::endl;
 };
 
 
@@ -31,16 +32,16 @@ void exacomm_dragonfly_ugal_router::route_initial(packet* pkt, switch_id ej_addr
   packet::path& pth = pkt->current_path();
   packet::path min_path;
   packet::path valiant_path;
-  switch_id intermediate_group = dtop_->random_intermediate_switch(my_addr_, ej_addr, seed_);
+  switch_id intermediate_switch = dtop_->random_intermediate_switch(my_addr_, ej_addr, seed_);
   bool use_alternative_path = switch_paths(ej_addr, 
-                                            intermediate_group, 
+                                            intermediate_switch, 
                                             min_path, 
                                             valiant_path);
   header* hdr = pkt->get_header<header>();  
 
   if (use_alternative_path) {
     hdr->stage = valiant_stage;
-    pkt->set_dest_switch(intermediate_group);
+    pkt->set_dest_switch(intermediate_switch);
   } else {
     hdr->stage = minimal_stage;
     pkt->set_dest_switch(ej_addr);
@@ -77,49 +78,50 @@ bool exacomm_dragonfly_ugal_router::route_common(packet* pkt) {
     hdr->stage = initial_stage;
   }
 
+  // eject if we've reached the ejection switch
   if (my_addr_ == ej_addr) {
-    // checks if we are at the ejection switch yet
     pkt->set_dest_switch(ej_addr);
     pth.set_outport(out_port);
     return true;
   }
    
-
-
   switch(hdr->stage) {
-    case(initial_stage): 
+    case(initial_stage): {
         // at first we need to decide whether or not there is congestion, if there isn't
         // congestion, set packet to minimal stage, else set it to valiant stage
-        route_initial(pkt, ej_addr);
-        break;
-    case(valiant_stage):
-        pkt->set_dest_switch(ej_addr);
-        hdr->stage = final_stage;
-        break;
-    case(minimal_stage):
-        pkt->set_dest_switch(ej_addr);
-        hdr->stage = final_stage;
-        break;
+      route_initial(pkt, ej_addr); // route_initial will be the one to set the 
+      break;
+    }
+    case(minimal_stage): 
     case(final_stage):
-        abort();
-        // should never really get here I think
-        break;
+      pkt->set_dest_switch(ej_addr);
+      break;
+    case(valiant_stage): {
+      if (my_addr_ == pkt->dest_switch()) {
+        // we've reached the valiant switch, time to minimally route to the dest switch
+        hdr->stage = final_stage;
+        pkt->set_dest_switch(ej_addr);
+      }
+      break;
+    }
   }
-  
   return false;
 };
 
 
 void exacomm_dragonfly_ugal_router::route(packet* pkt) {
   // make sure that the interconnect pointer isnt null
-  if (ic_ == nullptr) {
-    ic_ = netsw_->event_mgr()->interconn();
-  }
   bool eject = route_common(pkt);
+
   if (eject) return; // if eject then no need to route anymore
 
   packet::path& path = pkt->current_path();
+  auto hdr = pkt->get_header<header>();
   dtop_->minimal_route_to_switch(my_addr_, pkt->dest_switch(), path);
+  hdr->num_hops++;
+  if (dtop_->is_global_port(my_addr_, path.outport())) {
+    hdr->num_group_hops++;
+  }
   return;
 };
 

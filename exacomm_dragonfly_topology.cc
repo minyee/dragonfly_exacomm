@@ -454,7 +454,24 @@ switch_id exacomm_dragonfly_topology::node_to_ejection_switch(node_id addr, uint
       }
     }
     return def;
-  }
+  };
+
+  switch_id exacomm_dragonfly_topology::random_intermediate_switch(switch_id current, switch_id dst, uint32_t seed) {
+    long swid = current;
+    uint32_t attempt = 0;
+    int dest_grp = group_from_swid(dst);
+    int current_grp = group_from_swid(current);
+    while (current == swid) {
+      uint32_t intermediate_a = random_number(switches_per_group_, attempt, seed);
+      uint32_t intermediate_g = random_number(num_groups_, attempt, seed);
+      if (dest_grp != intermediate_g) {
+        swid = intermediate_g * switches_per_group_ + intermediate_a;
+      }
+      attempt++;
+    }
+    return swid;
+  };
+
 }
 }
 

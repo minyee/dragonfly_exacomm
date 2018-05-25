@@ -24,6 +24,7 @@ void exacomm_dragonfly_minimal_router::route(packet* pack) {
   switch_id ej_addr = dtop_->node_to_injection_switch(pack->toaddr(), port);
   if (my_addr_ == ej_addr) {
   	path.set_outport(port);
+    return;
   } else {
   	dtop_->minimal_route_to_switch(my_addr, ej_addr, path);
   }

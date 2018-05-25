@@ -270,6 +270,8 @@ public:
 
   virtual bool node_to_netlink(node_id nid, node_id& net_id, int& offset) const override;
 
+  virtual switch_id random_intermediate_switch(switch_id current, switch_id dest, uint32_t seed) override;
+
   bool is_global_port(switch_id swid, int outport) const;
 
 private:

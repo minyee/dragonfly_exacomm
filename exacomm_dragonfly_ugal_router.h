@@ -9,6 +9,10 @@
 
 #include "exacomm_dragonfly_topology.h" 
 
+
+
+
+
 namespace sstmac {
 namespace hw {
 
@@ -21,6 +25,11 @@ namespace hw {
 class exacomm_dragonfly_ugal_router : public ugal_router
 {
 
+  static const char initial = 0;
+  static const char valiant_stage = 1;
+  static const char minimal_stage = 2;   
+  static const char final_stage = 3;
+
   struct header : public ugal_router::header {
      char num_hops : 3;
      char num_group_hops : 3;
@@ -29,10 +38,8 @@ class exacomm_dragonfly_ugal_router : public ugal_router
 
   public:
 
-  static const char initial = 0;
-  static const char valiant_stage = 1;
-  static const char minimal_stage = 2;   
-  static const char final_stage = 3;
+
+  //static const char final_stage = 3; // not sure if this is needed
   
   FactoryRegister("exacomm_dragonfly_ugal", router, exacomm_dragonfly_ugal_router,
               "router implementing ugal congestion-aware routing in the exacomm_dragonfly")
@@ -41,7 +48,7 @@ class exacomm_dragonfly_ugal_router : public ugal_router
   
 
   std::string to_string() const override {
-    return "flexfly_simplified_ugal";
+    return "exacomm_dragonfly_ugal";
   };
 
   virtual int num_vc() const override {
@@ -62,7 +69,6 @@ class exacomm_dragonfly_ugal_router : public ugal_router
   void route_initial(packet* pkt, switch_id ej_addr);
 
   exacomm_dragonfly_topology* dtop_;
-  hw::interconnect* ic_;
 
   uint32_t seed_;
 };
