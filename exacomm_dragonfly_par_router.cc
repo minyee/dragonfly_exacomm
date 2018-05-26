@@ -1,5 +1,4 @@
 
-//#include <sstmac/hardware/router/ugal_routing.h>
 #include <sstmac/hardware/topology/structured_topology.h>
 #include <sstmac/hardware/switch/network_switch.h>
 #include <sprockit/util.h>
@@ -15,39 +14,17 @@ namespace hw {
 
 
 
-flexfly_par_router::flexfly_par_router(sprockit::sim_parameters *params, topology *top, network_switch *netsw)
+exacomm_dragonfly_par_router::exacomm_dragonfly_par_router(sprockit::sim_parameters *params, topology *top, network_switch *netsw)
   :  ugal_router(params, top, netsw)
 {
-  std::cout << "par router ayyyyyy" << std::endl;
   val_threshold_ = params->get_optional_int_param("ugal_threshold", 0);
   val_preference_factor_ = params->get_optional_int_param("valiant_preference_factor",1);
-  seed_ = params->get_optional_int_param("seed", 30);
-  ic_ = nullptr;
   dtop_ = safe_cast(exacomm_dragonfly_topology, top);
+  std::cout << "EXACOMM DRAGONFLY PAR ROUTER" << std::endl;
 };
 
 
-void flexfly_par_router::route_initial(packet* pkt, switch_id ej_addr) {
-  packet::path& pth = pkt->current_path();
-  packet::path min_path;
-  packet::path valiant_path;
-  switch_id intermediate_group = dtop_->random_intermediate_switch(my_addr_, ej_addr, seed_);
-  bool use_alternative_path = switch_paths(ej_addr, 
-                                            intermediate_group, 
-                                            min_path, 
-                                            valiant_path);
-  header* hdr = pkt->get_header<header>();  
-
-  if (use_alternative_path) {
-    hdr->stage = valiant_stage;
-    pkt->set_dest_switch(intermediate_group);
-  } else {
-    hdr->stage = minimal_stage;
-    pkt->set_dest_switch(ej_addr);
-  }
-};
-
-bool flexfly_par_router::switch_paths(switch_id orig_dst, 
+bool exacomm_dragonfly_par_router::switch_paths(switch_id orig_dst, 
                                         switch_id new_dst, 
                                         packet::path& orig_path, 
                                         packet::path& new_path) {
@@ -64,57 +41,48 @@ bool flexfly_par_router::switch_paths(switch_id orig_dst,
   return valiant_weight < orig_weight;
 }
 
-bool flexfly_par_router::route_common(packet* pkt) {
+
+void exacomm_dragonfly_par_router::route(packet* pkt) {
+  // make sure that the interconnect pointer isnt null
   uint16_t out_port;
   uint16_t in_port;
   switch_id ej_addr = dtop_->node_to_ejection_switch(pkt->toaddr(), out_port);
   switch_id inj_addr = dtop_->node_to_ejection_switch(pkt->fromaddr(), in_port);
-  packet::path& pth = pkt->current_path();
   auto hdr = pkt->get_header<header>();
-
-  uint16_t tmp;
-  if (my_addr_ == inj_addr) {
+  packet::path& pth = pkt->current_path();
+  // when this router is the injection switch iteself
+  if (inj_addr == my_addr_) {
     hdr->stage = initial_stage;
   }
-
-  if (my_addr_ == ej_addr) {
-    // checks if we are at the ejection switch yet
-    pkt->set_dest_switch(ej_addr);
+  // if we are at the ejection switch
+  if (ej_addr == my_addr_) {
     pth.set_outport(out_port);
-    return true;
+    return;
   }
-  
+
   switch(hdr->stage) {
-    case(initial_stage): 
-        // at first we need to decide whether or not there is congestion, if there isn't
-        // congestion, set packet to minimal stage, else set it to valiant stage
-        route_initial(pkt, ej_addr);
-        break;
+    case(initial_stage): {
+      packet::path original_path;
+      packet::path valiant_path;
+      switch_id intermediate_switch = dtop_->random_intermediate_switch(my_addr_, ej_addr, seed_);
+      if (switch_paths(ej_addr, intermediate_switch, original_path, valiant_path)) {
+        hdr->stage = valiant_stage;
+        pkt->set_dest_switch(intermediate_switch);
+        pkt->current_path() = valiant_path;
+      } else {
+        pkt->set_dest_switch(ej_addr);
+        pkt->current_path() = original_path;  
+      }
+      break;
+    }
     case(valiant_stage):
+      if (my_addr_ == pkt->dest_switch()) {
         pkt->set_dest_switch(ej_addr);
         hdr->stage = final_stage;
-        break;
-    case(minimal_stage):
-        pkt->set_dest_switch(ej_addr);
-        hdr->stage = final_stage;
-        break;
+      }
     case(final_stage):
-        abort();
-        // should never really get here I think
-        break;
+      break;
   }
-  
-  return false;
-};
-
-
-void flexfly_par_router::route(packet* pkt) {
-  // make sure that the interconnect pointer isnt null
-  if (ic_ == nullptr) {
-    ic_ = netsw_->event_mgr()->interconn();
-  }
-  bool eject = route_common(pkt);
-  if (eject) return; // if eject then no need to route anymore
 
   packet::path& path = pkt->current_path();
   dtop_->minimal_route_to_switch(my_addr_, pkt->dest_switch(), path);

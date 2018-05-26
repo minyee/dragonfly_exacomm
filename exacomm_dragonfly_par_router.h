@@ -31,15 +31,14 @@ class exacomm_dragonfly_par_router : public ugal_router
 
   static const char initial = 0;
   static const char valiant_stage = 1;
-  static const char minimal_stage = 2;   
   static const char final_stage = 3;
 
   public:
 
-  FactoryRegister("exacomm_dragonfly_par", router, flexfly_par_router,
+  FactoryRegister("exacomm_dragonfly_par", router, exacomm_dragonfly_par_router,
               "router implementing Progressive Adaptive Routing (PAR) in the exacomm_dragonfly_topology")
 
-  flexfly_par_router(sprockit::sim_parameters* params, topology* top, network_switch* netsw);
+  exacomm_dragonfly_par_router(sprockit::sim_parameters* params, topology* top, network_switch* netsw);
   
 
   std::string to_string() const override {
@@ -59,13 +58,7 @@ class exacomm_dragonfly_par_router : public ugal_router
  private:
   bool switch_paths(switch_id orig_dst, switch_id new_dst, packet::path& orig_path, packet::path& new_path);
 
-  bool route_common(packet* pkt);
-
-  void route_initial(packet* pkt, switch_id ej_addr);
-
   exacomm_dragonfly_topology* dtop_;
-
-  hw::interconnect* ic_;
 
   uint32_t seed_;
 };
